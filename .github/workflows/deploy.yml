@@ -1,0 +1,83 @@
+# GitHub Actions — Deploy to Amazon ECS
+#
+# This workflow runs every time you push to the main branch.
+# It builds your Docker image, pushes it to ECR, and deploys it to ECS.
+#
+# SETUP CHECKLIST (do this in Month 1-4):
+# 1. Create an ECR repository in AWS console → copy the URI into the env below
+# 2. Create an ECS cluster + service (Month 1 goal: do this manually first)
+# 3. Add AWS credentials as GitHub Secrets:
+#    - Go to your repo → Settings → Secrets and variables → Actions
+#    - Add: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+# 4. Update the env variables below to match your AWS setup
+
+name: Deploy to Amazon ECS
+
+on:
+  push:
+    branches: [main]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: shqip-backend       # Your ECR repo name
+  ECS_CLUSTER: shqip-cluster          # Your ECS cluster name
+  ECS_SERVICE: shqip-backend-service  # Your ECS service name
+  CONTAINER_NAME: shqip-backend       # Must match the name in your ECS task definition
+
+jobs:
+  deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Check out source code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Configure AWS credentials from GitHub secrets
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # 3. Log in to Amazon ECR (the Docker registry on AWS)
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # 4. Build the Docker image and push to ECR
+      - name: Build, tag, and push image to ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}   # Tag with the git commit hash — easy to trace
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./backend
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      # 5. Update the ECS task definition with the new image
+      - name: Download current ECS task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ env.CONTAINER_NAME }} \
+            --query taskDefinition > task-definition.json
+
+      - name: Update image in task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.build-image.outputs.image }}
+
+      # 6. Deploy the updated task definition to ECS
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true  # Wait until the new container is healthy
