@@ -12,14 +12,12 @@ export default function VocabPractice() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Load category list on mount
   useEffect(() => {
     getVocabCategories()
       .then((res) => setCategories(res.data.categories))
       .catch(console.error)
   }, [])
 
-  // Load words when category or dialect changes
   useEffect(() => {
     setLoading(true)
     getVocabulary(category, dialect)
@@ -37,9 +35,7 @@ export default function VocabPractice() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Vocabulary</h1>
-          <p className="text-gray-500 mt-1">
-            Tap a card to hear how it sounds
-          </p>
+          <p className="text-gray-500 mt-1">Tap a card to hear how it sounds</p>
         </div>
         <DialectToggle dialect={dialect} onToggle={toggleDialect} />
       </div>
@@ -48,15 +44,15 @@ export default function VocabPractice() {
       <div className="flex gap-2 flex-wrap mb-8">
         {categories.map((cat) => (
           <button
-            key={cat}
-            onClick={() => setCategory(cat)}
+            key={cat.id}
+            onClick={() => setCategory(cat.id)}
             className={`px-4 py-2 rounded-full text-sm font-medium capitalize transition-colors ${
-              category === cat
+              category === cat.id
                 ? 'bg-albania-red text-white'
                 : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
             }`}
           >
-            {cat}
+            {cat.label} <span className="text-xs opacity-60">({cat.word_count})</span>
           </button>
         ))}
       </div>
@@ -82,9 +78,8 @@ export default function VocabPractice() {
             ))}
       </div>
 
-      {/* Month 3 placeholder — AI tutor */}
-      <div className="mt-12 bg-gradient-to-r from-red-50 to-orange-50 rounded-2xl p-8
-                      border border-red-100 text-center">
+      {/* Month 3 placeholder */}
+      <div className="mt-12 bg-gradient-to-r from-red-50 to-orange-50 rounded-2xl p-8 border border-red-100 text-center">
         <div className="text-3xl mb-3">🤖</div>
         <h2 className="font-bold text-lg text-gray-900 mb-2">AI Conversation Tutor</h2>
         <p className="text-sm text-gray-500 max-w-md mx-auto">
