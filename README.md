@@ -1,4 +1,4 @@
-# Shqip — Albanian Language Learning App
+# Shqip: Albanian Language Learning App
 
 A full-stack language learning app for Albanian (Gheg & Tosk dialects),
 built on AWS with Python FastAPI, React, and Docker.
@@ -72,7 +72,7 @@ npm install
 npm run dev
 ```
 
-## Month 1 Checklist
+## Month 1 
 
 - [ ] App runs locally with Docker Compose
 - [ ] FastAPI `/health` endpoint returns 200
